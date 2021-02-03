@@ -1,0 +1,36 @@
+---
+
+# Copyright (c) 2020 Robert LaRocca https://www.laroccx.com
+
+# This ansible playbook will update all of the available packages installed on
+# a host and reboots the operating system if required. The playbook only works
+# with Red Hat Enterprise Linux based distributions like CentOS and Fedora.
+
+# Run this playbook using the following command:
+#   $ ansible-playbook yum-upgrade.yml -i hosts -u root --extra-vars "hosts=all"
+
+- hosts: '{{hosts}}'
+  become: true
+  become_user: root
+  any_errors_fatal: false
+  tasks:
+    - name: Update available repositories
+      yum: update_cache=yes
+
+    - name: Upgrade installed packages
+      yum: name=* state=latest
+
+    - name: Check reboot requirements
+      register: reboot_required_file
+      stat: path=/var/run/reboot-required get_md5=no
+
+    - name: Reboot system
+      reboot:
+        msg: "Reboot initiated by Ansible"
+        connect_timeout: 10
+        reboot_timeout: 600
+        pre_reboot_delay: 0
+        post_reboot_delay: 60
+        test_command: uptime
+      when: reboot_required_file.stat.exists
+
