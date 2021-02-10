@@ -4,25 +4,21 @@
 
 # This ansible playbook will update all of the available packages installed on
 # a host and reboots the operating system if required. The playbook only works
-# with Debian based distributions like Ubuntu.
+# with Debian based distributions like Ubuntu and Raspbian.
 
 # Run this playbook using the following command:
-# ansible-playbook apt-upgrade.yml -i hosts -u root --extra-vars "group=containers"
+# ansible-playbook reboot.yml -i hosts -u root --extra-vars "group=containers"
 
 - hosts: "{{ group }}"
   become: true
   become_user: root
   any_errors_fatal: false
   tasks:
-    - name: Update available repositories
-      apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+    - name: Check system uptime
+      shell: uptime
+      register: UPTIME_PRE_REBOOT
 
-    - name: Upgrade installed packages
-      apt: upgrade=dist force_apt_get=yes
-
-    - name: Check reboot requirements
-      register: reboot_required_file
-      stat: path=/var/run/reboot-required get_md5=no
+    - debug: msg={{UPTIME_PRE_REBOOT.stdout}}
 
     - name: Reboot operating system
       reboot:
@@ -32,5 +28,10 @@
         pre_reboot_delay: 0
         post_reboot_delay: 60
         test_command: uptime
-      when: reboot_required_file.stat.exists
+
+    - name: Check system uptime post-reboot
+      shell: uptime
+      register: UPTIME_POST_REBOOT
+
+    - debug: msg={{UPTIME_POST_REBOOT.stdout}}
 
